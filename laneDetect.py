@@ -13,8 +13,8 @@ import csv
 import numpy as np
 
 DEFAULT_CALIBRATION_FILE = "camWarpCalibration.csv"
-WHITE_TAPE_HSV = (0, 0, 100)
-YELLOW_TAPE_HSV = (60, 33, 100)
+WHITE_TAPE_HSV = (0, 0, 255)
+YELLOW_TAPE_HSV = (30, 85, 255)
 
 class Camera:
     """A calibrated camera for use with SafeTown."""
@@ -78,6 +78,34 @@ def loadCameraCalibrationDataFromCSV(filename=DEFAULT_CALIBRATION_FILE):
     
     return result
 
+def getLaneMarkerMask(frame: 'cv2.MatLike', center_color=YELLOW_TAPE_HSV, outside_color=WHITE_TAPE_HSV, value_tolerance=15):
+    """Gets the binary mask which corresponds to the lane markers (center dotted line and outside line), by color in HSV."""
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    
+    def applySaturationTolerance(x, tolerance):
+        lower_v = x[1] - tolerance
+        if lower_v < 0:
+            lower_v = 0
+
+        higher_v = x[1] + tolerance
+        if higher_v > 100:
+            higher_v = 100
+        
+        return ((x[0], lower_v, x[2]), (x[0], higher_v, x[2]))
+    
+    # Apply Thresholding for the outside tape.
+    lower_outside, higher_outside = applySaturationTolerance(outside_color, value_tolerance)
+    mask_outside = cv2.inRange(hsv, lower_outside, higher_outside)
+    
+    # Apply Thresholding for the inside tape.
+    lower_inside, higher_inside = applySaturationTolerance(center_color, value_tolerance)
+    mask_inside = cv2.inRange(hsv, lower_outside, higher_inside)
+
+    # Merge the masks.
+    mask = mask_outside | mask_inside
+
+    return mask
+
 def _runTest():
     """Tests the lane detection with imshow output."""
     print("Press 'enter' to exit!")
@@ -90,8 +118,12 @@ def _runTest():
         frame = cam.getFrame()
         frame_warped = cam.warpFrame(frame)
 
+        # Do the magic lane detection.
+        lane_mask = getLaneMarkerMask(frame_warped)
+
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)
+        cv2.imshow('output', lane_mask)
 
 if __name__ == '__main__':
     _runTest()

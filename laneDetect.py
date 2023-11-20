@@ -78,6 +78,14 @@ def loadCameraCalibrationDataFromCSV(filename=DEFAULT_CALIBRATION_FILE):
     
     return result
 
+def applyLineThresholding(frame: 'cv2.MatLike', center_color=YELLOW_TAPE_HSV, outside_color=WHITE_TAPE_HSV, clone_frame=False):
+    """Converts the frame into a binary image with only the center and outside road tape."""
+    if clone_frame:
+        frame = frame.copy()
+    
+    
+    return frame
+
 def _runTest():
     """Tests the lane detection with imshow output."""
     print("Press 'enter' to exit!")

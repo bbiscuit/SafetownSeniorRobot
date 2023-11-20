@@ -49,7 +49,6 @@ def warp(rows, cols, frame):
 def writeCoordsToCSV(filename):
     with open(filename, 'w') as csv_file:
         writer = csv.writer(csv_file, dialect="excel")
-        writer.writerow(['Coord', 'X', 'Y'])
         writer.writerow(['Top Left', topLeftCoord[0], topLeftCoord[1]])
         writer.writerow(['Top Right', topRightCoord[0], topRightCoord[1]])
         writer.writerow(['Bottom Left', bottomLeftCoord[0], bottomLeftCoord[1]])

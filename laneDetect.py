@@ -106,48 +106,12 @@ def getLaneMarkerMask(frame: 'cv2.MatLike', center_color=YELLOW_TAPE_HSV, outsid
 
     return mask
 
-def getLaneMask(marker_mask: 'cv2.MatLike', head_size=20):
-    """Takes a binary mask which encodes the lane markers and converts it into a binary mask which encodes the
-    full lane."""
-
-    # The mask needs to be cloned because we will be drawing to the result, and we need the intial
-    # value for comparison with every iteration.
-    result = marker_mask.copy()
-    rows, cols = result.shape
-
-    # For every row in the image, iterate from right to left (we go from right to left because
-    # the boundary marker on the right is solid, whereas the one on the left is dotted), drawing
-    # pixels after the right boundary, stopping when we meet the left boundary.
-    for row_num in range(rows):
-        inRightBoundary = False
-        inbetweenBoundaries = False
-        writtenPixels = 0
-        for col_num in range(cols - 1, -1, -1):
-            if inbetweenBoundaries:
-                result[row_num][col_num] = 255
-                writtenPixels += 1
-
-                if writtenPixels > 100:                    
-                    for i in range(head_size // 2):
-                        check_low = row_num + i
-                        check_high = row_num - i
-                        if check_low < rows:
-                            if marker_mask[check_low][col_num] == 255:
-                                break
-                        if check_high >= 0:
-                            if marker_mask[check_high][col_num] == 255:
-                                break
-
-            elif inRightBoundary:
-                if marker_mask[row_num][col_num]  == 0:
-                    inRightBoundary = False
-                    inbetweenBoundaries = True
-            else:
-                if marker_mask[row_num][col_num] == 255:
-                    inRightBoundary = True
-    
-    return result
-
+def findCenterPoints(marker_mask: 'cv2.MatLike'):
+    """Finds the center point between each dot in the middle line and the right line."""
+    # Find the contours in the image.
+    # Identify the right line -- this will always be the largest contour.
+    # For each contour which isn't the right line, find the shortest line between the two,
+    # and add the center to the result -- this will be the center of the lane.
 
 def _runTest():
     """Tests the lane detection with imshow output."""

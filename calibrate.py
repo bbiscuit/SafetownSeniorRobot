@@ -87,8 +87,15 @@ def createCallibrationWindow(win_name):
     cv2.createTrackbar('Bottom Left Y', win_name, bottomRightCoord[1], FRAME_ROWS, updateBottomLeftY)
     cv2.createTrackbar('Bottom Right X', win_name, bottomRightCoord[0], FRAME_COLS, updateBottomRightX)
     cv2.createTrackbar('Bottom Right Y', win_name, bottomRightCoord[1], FRAME_ROWS, updateBottomRightY)
-
 createCallibrationWindow('cal')
+
+# Setup the mouse pointer, to calibrate tape colors.
+cv2.namedWindow('frame')
+def calibrateColorWithMouse(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print("Click!")
+cv2.setMouseCallback('frame', calibrateColorWithMouse)
+
 i = 0
 while True:
     ret, frame = cam.read()

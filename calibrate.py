@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import csv
 
+CAM_DEVICE = 0
+
 topLeftCoord = [0, 0]
 topRightCoord = [0, 0]
 bottomLeftCoord = [0, 0]
@@ -59,7 +61,7 @@ CSV_NAME = 'camWarpCalibration.csv'
 loadCoordsFromCSV(CSV_NAME)
 
 # Set up camera information.
-cam = cv2.VideoCapture(0)
+cam = cv2.VideoCapture(CAM_DEVICE)
 FRAME_ROWS, FRAME_COLS, _ = cam.read()[1].shape
 
 # Initialize the window which will be used for calibration.

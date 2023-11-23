@@ -1,13 +1,8 @@
 import cv2
 import numpy as np
-import csv
+import json
 
-CAM_DEVICE = 0
-
-topLeftCoord = [0, 0]
-topRightCoord = [0, 0]
-bottomLeftCoord = [0, 0]
-bottomRightCoord = [0, 0]
+SETTINGS_FILENAME = "settings.json"
 
 def loadCoordsFromCSV(filename):
     try:
@@ -48,20 +43,21 @@ def warp(rows, cols, frame):
     frame = cv2.warpPerspective(frame, transform, (cols, rows))
     return frame
 
-def writeCoordsToCSV(filename):
-    with open(filename, 'w') as csv_file:
-        writer = csv.writer(csv_file, dialect="excel")
-        writer.writerow(['Top Left', topLeftCoord[0], topLeftCoord[1]])
-        writer.writerow(['Top Right', topRightCoord[0], topRightCoord[1]])
-        writer.writerow(['Bottom Left', bottomLeftCoord[0], bottomLeftCoord[1]])
-        writer.writerow(['Bottom Right', bottomRightCoord[0], bottomRightCoord[1]])
+# Load settings.
+settings = {}
+with open(SETTINGS_FILENAME, 'r') as settings_f:
+    settings = json.load(settings_f)
 
-# Load previous calibration information as a meaninful default.
-CSV_NAME = 'camWarpCalibration.csv'
-loadCoordsFromCSV(CSV_NAME)
+# Load coordinates from settings, as a meaninful default.
+coord_settings = settings["cam_warp_calibration"]
+
+topLeftCoord = coord_settings["top_left"]
+topRightCoord = coord_settings["top_right"]
+bottomLeftCoord = coord_settings["bottom_left"]
+bottomRightCoord = coord_settings["bottom_right"]
 
 # Set up camera information.
-cam = cv2.VideoCapture(CAM_DEVICE)
+cam = cv2.VideoCapture(settings["cam_device"])
 FRAME_ROWS, FRAME_COLS, _ = cam.read()[1].shape
 
 # Initialize the window which will be used for calibration.
@@ -109,5 +105,6 @@ while True:
     cv2.imshow('warped', warped)
     i += 1
 
-# Output a cam calibration CSV file.
-writeCoordsToCSV(CSV_NAME)
+# Write back the settings to file.
+with open(SETTINGS_FILENAME, 'w') as settings_f:
+    json.dump(settings, settings_f)

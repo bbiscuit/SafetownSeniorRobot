@@ -9,10 +9,10 @@
 ################################################################################
 
 import cv2
-import csv
 import numpy as np
+import json
 
-DEFAULT_CALIBRATION_FILE = "camWarpCalibration.csv"
+SETTINGS_FILE = "settings.json"
 WHITE_TAPE_HSV = (0, 0, 255)
 YELLOW_TAPE_HSV = (30, 85, 255)
 
@@ -23,23 +23,20 @@ class Camera:
         """Raised when the camera fails to read."""
         pass
 
-    def __init__(self, 
-                 camID=0, 
-                 warpingParams: dict[str, tuple[int, int]]=None):
-        self.cam = cv2.VideoCapture(camID)
+    def __init__(self, cam_settings: dict):
+        self.cam = cv2.VideoCapture(cam_settings["cam_device"])
 
         # Use a sample frame to determine the resolution of the camera
         self.rows, self.cols, _ = self.cam.read()[1].shape
 
         # Load the matrix used for bird's-eye view warping
-        self.warpingMatrix = None
-        if warpingParams is not None:
-            input_pts = np.float32([warpingParams['Top Left'], 
-                                    warpingParams['Top Right'], 
-                                    warpingParams['Bottom Left'], 
-                                    warpingParams['Bottom Right']])
-            output_pts = np.float32([(0, 0), (self.cols, 0), (0, self.rows), (self.cols, self.rows)])
-            self.warpingMatrix = cv2.getPerspectiveTransform(input_pts, output_pts)
+        warping_params = cam_settings["cam_warp_calibration"]
+        input_pts = np.float32([warping_params['top_left'], 
+                                warping_params['top_right'], 
+                                warping_params['bottom_left'], 
+                                warping_params['bottom_right']])
+        output_pts = np.float32([(0, 0), (self.cols, 0), (0, self.rows), (self.cols, self.rows)])
+        self.warpingMatrix = cv2.getPerspectiveTransform(input_pts, output_pts)
     
     def getFrame(self):
         res, frame = self.cam.read()
@@ -53,30 +50,7 @@ class Camera:
         """Copies the frame and warps it based upon the warping parameters, if
         they have been given. Otherwise, no warping is done."""
 
-        if self.warpingMatrix is not None:
-            return cv2.warpPerspective(frame.copy(), self.warpingMatrix, (self.cols, self.rows))
-        else:
-            return frame.copy()
-
-    def initFromCSV(camID=0, camCalibrationFilename=DEFAULT_CALIBRATION_FILE):
-        """Initializes and loads calibration data for the camera."""
-        calibration_data = loadCameraCalibrationDataFromCSV(camCalibrationFilename)
-        return Camera(camID, calibration_data)
-
-def loadCameraCalibrationDataFromCSV(filename=DEFAULT_CALIBRATION_FILE):
-    """Loads camera calibration data into a dict, or None if the file doesn't
-    exist."""
-    result = {}
-    try:
-        with open(filename, 'r') as calibration_csv:
-            reader = csv.reader(calibration_csv, dialect="excel")
-            for row in reader:
-                if len(row) >= 3:
-                    result[row[0]] = (int(row[1]), int(row[2]))
-    except FileNotFoundError:
-        return None
-    
-    return result
+        return cv2.warpPerspective(frame.copy(), self.warpingMatrix, (self.cols, self.rows))
 
 def getLaneMarkerMask(frame: 'cv2.MatLike', center_color=YELLOW_TAPE_HSV, outside_color=WHITE_TAPE_HSV, value_tolerance=15):
     """Gets the binary mask which corresponds to the lane markers (center dotted line and outside line), by color in HSV."""
@@ -116,7 +90,14 @@ def findCenterPoints(marker_mask: 'cv2.MatLike'):
 def _runTest():
     """Tests the lane detection with imshow output."""
     print("Press 'enter' to exit!")
-    cam = Camera.initFromCSV(0)
+
+    # Load settings.
+    settings = {}
+    with open(SETTINGS_FILE, 'r') as settings_f:
+        settings = json.load(settings_f)
+
+    # Initialize the camera.
+    cam = Camera(settings)
 
     # Loop until the user presses the enter key.
     ENTER_KEY = 13
@@ -126,7 +107,7 @@ def _runTest():
         frame_warped = cam.warpFrame(frame)
 
         # Do the magic lane detection.
-        lane_mask = getLaneMask(getLaneMarkerMask(frame_warped))
+        lane_mask = getLaneMarkerMask(frame_warped)
 
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)

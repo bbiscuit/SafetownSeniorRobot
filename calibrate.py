@@ -88,7 +88,7 @@ def createCallibrationWindow(win_name):
     cv2.createTrackbar('Bottom Right X', win_name, bottomRightCoord[0], FRAME_COLS, updateBottomRightX)
     cv2.createTrackbar('Bottom Right Y', win_name, bottomRightCoord[1], FRAME_ROWS, updateBottomRightY)
 
-createCallibrationWindow('frame')
+createCallibrationWindow('cal')
 i = 0
 while True:
     ret, frame = cam.read()

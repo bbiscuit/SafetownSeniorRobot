@@ -90,7 +90,7 @@ def createCallibrationWindow(win_name):
 createCallibrationWindow('cal')
 
 # Setup the mouse pointer, to calibrate tape colors.
-cv2.namedWindow('frame')
+cv2.namedWindow('warped')
 color_calibration = [True, False]
 def calibrateColorWithMouse(event, x, y, flags, param):
     _, frame = cam.read()
@@ -110,7 +110,7 @@ def calibrateColorWithMouse(event, x, y, flags, param):
             print("Recorded outside line color!")
             color_calibration[1] = False
 
-cv2.setMouseCallback('frame', calibrateColorWithMouse)
+cv2.setMouseCallback('warped', calibrateColorWithMouse)
 
 i = 0
 while True:

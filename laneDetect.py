@@ -98,6 +98,7 @@ def _runTest():
 
     # Initialize the camera.
     cam = Camera(settings)
+    color_calibration = settings["color_calibration_hsv"]
 
     # Loop until the user presses the enter key.
     ENTER_KEY = 13
@@ -107,7 +108,7 @@ def _runTest():
         frame_warped = cam.warpFrame(frame)
 
         # Do the magic lane detection.
-        lane_mask = getLaneMarkerMask(frame_warped)
+        lane_mask = getLaneMarkerMask(frame_warped, color_calibration["center_line"], color_calibration["outside_line"])
 
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)

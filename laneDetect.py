@@ -52,27 +52,25 @@ class Camera:
 
         return cv2.warpPerspective(frame.copy(), self.warpingMatrix, (self.cols, self.rows))
 
-def getLaneMarkerMask(frame: 'cv2.MatLike', center_color=YELLOW_TAPE_HSV, outside_color=WHITE_TAPE_HSV, value_tolerance=15):
+def getLaneMarkerMask(frame: 'cv2.MatLike', inside_color=YELLOW_TAPE_HSV, outside_color=WHITE_TAPE_HSV, value_tolerance=15):
     """Gets the binary mask which corresponds to the lane markers (center dotted line and outside line), by color in HSV."""
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     
-    def applySaturationTolerance(x, tolerance):
-        lower_v = x[1] - tolerance
-        if lower_v < 0:
-            lower_v = 0
-
-        higher_v = x[1] + tolerance
-        if higher_v > 100:
-            higher_v = 100
-        
-        return ((x[0], lower_v, x[2]), (x[0], higher_v, x[2]))
+    def applyTolerance(x, tolerance, max):
+        return (
+            0 if x - tolerance < 0 else x - tolerance,
+            max if x + tolerance > max else x + tolerance
+        )
+    
+    def toThruple(x, y, z):
+        return ((x[0], y[0], z[0]), (x[1], y[1], z[1]))
     
     # Apply Thresholding for the outside tape.
-    lower_outside, higher_outside = applySaturationTolerance(outside_color, value_tolerance)
+    lower_outside, higher_outside = toThruple(applyTolerance(outside_color[0], 360, 360), applyTolerance(outside_color[1], 10, 255), applyTolerance(outside_color[2], 10, 255))
     mask_outside = cv2.inRange(hsv, lower_outside, higher_outside)
     
     # Apply Thresholding for the inside tape.
-    lower_inside, higher_inside = applySaturationTolerance(center_color, value_tolerance)
+    lower_inside, higher_inside = toThruple(applyTolerance(inside_color[0], 10, 360), applyTolerance(inside_color[1], 10, 255), applyTolerance(inside_color[2], 10, 255))
     mask_inside = cv2.inRange(hsv, lower_outside, higher_inside)
 
     # Merge the masks.

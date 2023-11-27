@@ -87,26 +87,28 @@ def get_lane_marker_mask(
 
     return (mask_outside, mask_inside)
 
-def find_center_points(outside_mask, inside_mask, dot_num):
+def find_center_points(outside_contours, inside_contours, dot_num):
     """Finds the center point between each dot in the middle line and the right line."""
     points = []
-    marker_mask = outside_mask | inside_mask
-    # Find the contours in the image.
-    contours, _ = cv2.findContours(marker_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # If there aren't enough contours to do even one interpolation, leave.
-    if len(contours) < 2:
+    if len(outside_contours) == 0 or len(inside_contours) == 0:
         return points
 
-    # Identify the right line -- this will always be the largest contour.
-    contours = list(contours)
-    contours.sort(key=cv2.contourArea)
-    outside_line = contours.pop().tolist()
+    # Take the largest contour from the outside line as the "outside line contour."
+    # This contour is converted to a list because we will be sorting it by its points
+    # later, a function which does not exist with numpy arrays.
+    outside_contours = list(outside_contours)
+    outside_line = max(outside_contours, key=cv2.contourArea).tolist()
 
-    # For each contour which isn't the right line, find the shortest line between the two,
-    # and add the center to the result -- this will be the center of the lane.
+    # For each of the inside contours, interpolate a centerline between the top largest and the
+    # outside line.
+    inside_contours = list(inside_contours)
+    inside_contours.sort(key=cv2.contourArea)
     for _ in range(dot_num):
-        contour = contours.pop()
+        if len(inside_contours) == 0:
+            break
+        contour = inside_contours.pop()
 
         # Find the centroid of the contour.
         moments_center = cv2.moments(contour)
@@ -176,8 +178,17 @@ def _run_test():
             color_calibration["center_line"],
             color_calibration["outside_line"])
 
+        # Get contours from these masks.
+        outside_contours, _ = cv2.findContours(
+            outside_mask,
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE)
+        inside_contours, _ = cv2.findContours(inside_mask,
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE)
+
         # Draw the center points on the warped frame.
-        centers = find_center_points(outside_mask, inside_mask, 5)
+        centers = find_center_points(outside_contours, inside_contours, 5)
         draw_points(frame_warped, centers)
 
         # Show the test data to the user.

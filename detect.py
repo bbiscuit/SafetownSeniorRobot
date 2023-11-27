@@ -62,6 +62,25 @@ def get_lane_marker_mask(
     line. Returns a tuple which looks like (outside_mask, inside_mask)."""
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
+    # Split the frame into halves, so that we're only checking half of the frame for the inside/
+    # outside lines. This reduces noise (we know a priori that the left side of the image contains
+    # no useful informatino about the outside line).
+    right_side_hsv = cv2.rectangle(
+        hsv.copy(),
+        (0, 0),
+        (frame.shape[0],
+        frame.shape[1] // 2),
+        (0, 0, 0),
+        -1
+    )
+    left_side_hsv = cv2.rectangle(
+        hsv.copy(),
+        (0, frame.shape[1] // 2),
+        frame.shape[0:2],
+        (0, 0, 0),
+        -1
+    )
+
     def apply_tolerance(val, tolerance, max_val):
         return (
             0 if val - tolerance < 0 else val - tolerance,
@@ -76,18 +95,18 @@ def get_lane_marker_mask(
         apply_tolerance(outside_color[0], 360, 360),
         apply_tolerance(outside_color[1], 10, 255),
         apply_tolerance(outside_color[2], 10, 255))
-    mask_outside = cv2.inRange(hsv, lower_outside, higher_outside)
+    mask_outside = cv2.inRange(right_side_hsv, lower_outside, higher_outside)
 
     # Apply Thresholding for the inside tape.
     lower_inside, higher_inside = to_thruple(
         apply_tolerance(inside_color[0], 10, 360),
         apply_tolerance(inside_color[1], 10, 255),
         apply_tolerance(inside_color[2], 10, 255))
-    mask_inside = cv2.inRange(hsv, lower_inside, higher_inside)
+    mask_inside = cv2.inRange(left_side_hsv, lower_inside, higher_inside)
 
     return (mask_outside, mask_inside)
 
-def find_center_points(outside_contours, inside_contours, dot_num):
+def find_center_points(outside_contours, inside_contours, dot_num, frame):
     """Finds the center point between each dot in the middle line and the right line."""
     points = []
 
@@ -100,6 +119,7 @@ def find_center_points(outside_contours, inside_contours, dot_num):
     # later, a function which does not exist with numpy arrays.
     outside_contours = list(outside_contours)
     outside_line = max(outside_contours, key=cv2.contourArea).tolist()
+    cv2.drawContours(frame, np.array(np.asarray(outside_line, dtype=np.int32)), 0, (255, 0, 0), 3)
 
     # For each of the inside contours, interpolate a centerline between the top largest and the
     # outside line.
@@ -188,12 +208,12 @@ def _run_test():
             cv2.CHAIN_APPROX_SIMPLE)
 
         # Draw the center points on the warped frame.
-        centers = find_center_points(outside_contours, inside_contours, 5)
+        centers = find_center_points(outside_contours, inside_contours, 5, frame_warped)
         draw_points(frame_warped, centers)
 
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)
-        cv2.imshow('output', outside_mask | inside_mask)
+        cv2.imshow('output', outside_mask)
 
 if __name__ == '__main__':
     _run_test()

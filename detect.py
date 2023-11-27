@@ -58,8 +58,8 @@ def get_lane_marker_mask(
     frame: 'cv2.MatLike',
     inside_color=YELLOW_TAPE_HSV,
     outside_color=WHITE_TAPE_HSV):
-    """Gets the binary mask which corresponds to the lane markers (center dotted line and outside
-    line), by color in HSV."""
+    """Gets two binary masks: one for the outside solid line, and one for the inside dotted
+    line. Returns a tuple which looks like (outside_mask, inside_mask)."""
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     def apply_tolerance(val, tolerance, max_val):
@@ -85,14 +85,12 @@ def get_lane_marker_mask(
         apply_tolerance(inside_color[2], 10, 255))
     mask_inside = cv2.inRange(hsv, lower_inside, higher_inside)
 
-    # Merge the masks.
-    mask = mask_outside | mask_inside
+    return (mask_outside, mask_inside)
 
-    return mask
-
-def find_center_points(marker_mask, dot_num):
+def find_center_points(outside_mask, inside_mask, dot_num):
     """Finds the center point between each dot in the middle line and the right line."""
     points = []
+    marker_mask = outside_mask | inside_mask
     # Find the contours in the image.
     contours, _ = cv2.findContours(marker_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -172,19 +170,19 @@ def _run_test():
         frame = cam.get_frame()
         frame_warped = cam.warp_frame(frame)
 
-        # Do the magic lane detection.
-        lane_mask = get_lane_marker_mask(
+        # Get masks for the outside solid and inside dotted line.
+        outside_mask, inside_mask = get_lane_marker_mask(
             frame_warped,
             color_calibration["center_line"],
             color_calibration["outside_line"])
 
         # Draw the center points on the warped frame.
-        centers = find_center_points(lane_mask, 5)
+        centers = find_center_points(outside_mask, inside_mask, 5)
         draw_points(frame_warped, centers)
 
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)
-        cv2.imshow('output', lane_mask)
+        cv2.imshow('output', outside_mask | inside_mask)
 
 if __name__ == '__main__':
     _run_test()

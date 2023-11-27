@@ -96,10 +96,14 @@ def find_center_points(marker_mask, dot_num):
     # Find the contours in the image.
     contours, _ = cv2.findContours(marker_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    # If there aren't enough contours to do even one interpolation, leave.
+    if len(contours) < 2:
+        return points
+
     # Identify the right line -- this will always be the largest contour.
     contours = list(contours)
     contours.sort(key=cv2.contourArea)
-    outside_line = list(contours.pop())
+    outside_line = contours.pop().tolist()
 
     # For each contour which isn't the right line, find the shortest line between the two,
     # and add the center to the result -- this will be the center of the lane.
@@ -107,17 +111,17 @@ def find_center_points(marker_mask, dot_num):
         contour = contours.pop()
 
         # Find the centroid of the contour.
-        moments = cv2.moments(contour)
-        if moments["m00"] != 0:
-            mid_centroid_x = int(moments["m10"] / moments["m00"])
-            mid_centroid_y = int(moments["m01"] / moments["m00"])
+        moments_center = cv2.moments(contour)
+        if moments_center["m00"] != 0:
+            mid_centroid_x = int(moments_center["m10"] / moments_center["m00"])
+            mid_centroid_y = int(moments_center["m01"] / moments_center["m00"])
         else:
             mid_centroid_x, mid_centroid_y = 0, 0
 
         # Find the centroid of the slice of the outside line which is similar
         # in the y coordinate to the center line centroid.
         def get_distance(val, rule):
-            return val[0, 0] - rule
+            return val[0][0] - rule
         # This has to be done because the normal lambda would freeze the centroid value.
         # The partial function solves the issue, according to the pylint documentation,
         # because the value of 'rule' is determined at runtime, and not determined using
@@ -125,10 +129,29 @@ def find_center_points(marker_mask, dot_num):
         # More details here:
         # https://pylint.readthedocs.io/en/latest/user_guide/messages/warning/cell-var-from-loop.html
         outside_line.sort(key=functools.partial(get_distance, rule=mid_centroid_y))
-        sub_c = outside_line[0:LEN_CENTROID_SLICE]
 
+        # Find the centroid of this slice. We have to find the moments on it, so we need to convert
+        # it into a numpy array.
+        sub_c = np.asarray(outside_line[0:LEN_CENTROID_SLICE], dtype=np.int32)
+
+        moments_slice = cv2.moments(sub_c)
+        if moments_slice["m00"] != 0:
+            slice_centroid_x = int(moments_slice["m10"] / moments_slice["m00"])
+        else:
+            slice_centroid_x = 0
+
+        # Find the center of the line between the two centroids, and add it to the result.
+        # The y values should be roughly equivalent, so don't worry about finding the mean
+        # between them.
+        center = ((mid_centroid_x + slice_centroid_x)//2, mid_centroid_y)
+        points.append(center)
 
     return points
+
+def draw_points(frame, points: list[tuple[int, int]]):
+    """Draws a list of points onto a frame (no copy)."""
+    for point in points:
+        cv2.circle(frame, point, 3, (255, 0, 0), 3)
 
 def _run_test():
     """Tests the lane detection with imshow output."""
@@ -154,9 +177,10 @@ def _run_test():
             frame_warped,
             color_calibration["center_line"],
             color_calibration["outside_line"])
-        contours = find_center_points(lane_mask, 5)
 
-        cv2.drawContours(frame_warped, contours, -1, (255, 0, 0), 5)
+        # Draw the center points on the warped frame.
+        centers = find_center_points(lane_mask, 5)
+        draw_points(frame_warped, centers)
 
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)

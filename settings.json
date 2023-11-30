@@ -1,1 +1,1 @@
-{"cam_device": "/dev/video2", "cam_warp_calibration": {"top_left": [242, 64], "top_right": [544, 71], "bottom_left": [0, 301], "bottom_right": [628, 301]}, "color_calibration_hsv": {"center_line": [23, 105, 246], "outside_line": [26, 19, 228]}}
+{"cam_device": "/dev/video2", "cam_warp_calibration": {"top_left": [234, 151], "top_right": [561, 163], "bottom_left": [0, 301], "bottom_right": [575, 329]}, "color_calibration_hsv": {"center_line": [30, 85, 255], "outside_line": [0, 0, 254]}}

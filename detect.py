@@ -68,15 +68,14 @@ def get_lane_marker_mask(
     right_side_hsv = cv2.rectangle(
         hsv.copy(),
         (0, 0),
-        (frame.shape[0],
-        frame.shape[1] // 2),
+        (frame.shape[1] // 2, frame.shape[0]),
         (0, 0, 0),
         -1
     )
     left_side_hsv = cv2.rectangle(
         hsv.copy(),
-        (0, frame.shape[1] // 2),
-        frame.shape[0:2],
+        (frame.shape[1] // 2, 0),
+        (frame.shape[1], frame.shape[0]),
         (0, 0, 0),
         -1
     )
@@ -213,7 +212,7 @@ def _run_test():
 
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)
-        cv2.imshow('output', outside_mask)
+        cv2.imshow('mask', inside_mask | outside_mask)
 
 if __name__ == '__main__':
     _run_test()

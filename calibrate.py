@@ -9,6 +9,7 @@ import json
 import functools
 import cv2
 import numpy as np
+import detect
 
 SETTINGS_FILENAME = "settings.json"
 TRACKER_RADIUS = 10
@@ -25,14 +26,14 @@ def warp(frame, coords):
     frame = cv2.warpPerspective(frame.copy(), transform, (cols, rows))
     return frame
 
-def draw_trackers(frame, coords):
+def draw_warping_trackers(frame, coords):
     """Draws the calibration trackers on the given frame (doesn't copy)."""
     cv2.circle(frame, coords["top_left"], TRACKER_RADIUS, TRACKER_COLOR, -1)
     cv2.circle(frame, coords["top_right"], TRACKER_RADIUS, TRACKER_COLOR, -1)
     cv2.circle(frame, coords["bottom_left"], TRACKER_RADIUS, TRACKER_COLOR, -1)
     cv2.circle(frame, coords["bottom_right"], TRACKER_RADIUS, TRACKER_COLOR, -1)
 
-def create_tracker_window(frame, name: str, coords: dict):
+def create_warping_tracker_window(frame, name: str, coords: dict):
     """Creates a window which contains trackbars to configure warping. Takes in coordinate values
     as default trackbar vals."""
     frame_rows, frame_cols, _ = frame.shape
@@ -63,6 +64,39 @@ def create_tracker_window(frame, name: str, coords: dict):
     create_trackbar("Bottom Right X", "bottom_right", 0)
     create_trackbar("Bottom Right Y", "bottom_right", 1)
 
+def create_tolerance_trackbar_window(name: str, tolerance_settings: dict):
+    """Creates a window for adjusting color tolerances."""
+    cv2.namedWindow(name)
+
+    def create_hsv_tolerance_trackbars(line_title: str):
+        def update_val(val, title, dim):
+            tolerance_settings[title][dim] = val
+
+        cv2.createTrackbar(
+            f'{line_title} H tolerance',
+            name,
+            tolerance_settings[line_title][0],
+            360,
+            functools.partial(update_val, title=line_title, dim=0)
+        )
+        cv2.createTrackbar(
+            f'{line_title} S tolerance',
+            name,
+            tolerance_settings[line_title][1],
+            255,
+            functools.partial(update_val, title=line_title, dim=1)
+        )
+        cv2.createTrackbar(
+            f'{line_title} V tolerance',
+            name,
+            tolerance_settings[line_title][2],
+            255,
+            functools.partial(update_val, title=line_title, dim=2)
+        )
+
+    create_hsv_tolerance_trackbars('center_line')
+    create_hsv_tolerance_trackbars('outside_line')
+
 def main():
     """Driver code for the calibration app."""
     # Load settings.
@@ -76,8 +110,11 @@ def main():
     # Set up camera information.
     cam = cv2.VideoCapture(settings["cam_device"])
 
-    # Initialize the window which will be used for calibration.
-    create_tracker_window(cam.read()[1], "trackers", coords)
+    # Initialize the window which will be used for warping calibration.
+    create_warping_tracker_window(cam.read()[1], "trackers", coords)
+
+    # Intialize the window which will be used for color tolerance calibration.
+    create_tolerance_trackbar_window('color calibration', settings["tolerance_calibration_hsv"])
 
     # Setup the mouse pointer, to calibrate tape colors.
     cv2.namedWindow('calibrate')
@@ -114,10 +151,19 @@ def main():
         if cv2.waitKey(1) == 13:
             break
 
+        # Get masks for inside and outside line.
+        center_line_hsv = settings["color_calibration_hsv"]["center_line"]
+        outside_line_hsv = settings["color_calibration_hsv"]["outside_line"]
+        mask_outside, mask_inside = detect.get_lane_marker_mask(
+            warped,
+            center_line_hsv,
+            outside_line_hsv)
+
         # Update the frames being shown.
-        draw_trackers(frame, coords)
+        draw_warping_trackers(frame, coords)
         cv2.imshow('calibrate', frame)
         cv2.imshow('warped', warped)
+        cv2.imshow('masks', mask_outside | mask_inside)
         i += 1
 
     # Write back the settings to file.

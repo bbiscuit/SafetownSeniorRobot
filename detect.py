@@ -59,7 +59,8 @@ def get_lane_marker_mask(
     inside_color=YELLOW_TAPE_HSV,
     outside_color=WHITE_TAPE_HSV):
     """Gets two binary masks: one for the outside solid line, and one for the inside dotted
-    line. Returns a tuple which looks like (outside_mask, inside_mask)."""
+    line. Returns a tuple which looks like (outside_mask, inside_mask). Assumes that the frame
+    passed in is BGR."""
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Split the frame into halves, so that we're only checking half of the frame for the inside/

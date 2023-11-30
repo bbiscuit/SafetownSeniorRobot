@@ -118,8 +118,10 @@ def main():
 
     # Setup the mouse pointer, to calibrate tape colors.
     cv2.namedWindow('calibrate')
-    color_calibration = [True, False]
+    calibrating_center = True
     def calibrate_color_with_mouse(event, x, y, _, __):
+        nonlocal calibrating_center
+
         _, frame = cam.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -127,15 +129,14 @@ def main():
             color_settings = settings["color_calibration_hsv"]
             color = frame[y, x]
 
-            if color_calibration[0]:
+            if calibrating_center:
                 color_settings["center_line"] = [int(color[0]), int(color[1]), int(color[2])]
                 print("Recorded center line color!")
-                color_calibration[0] = False
-                color_calibration[1] = True
-            elif color_calibration[1]:
+                calibrating_center = False
+            else:
                 color_settings["outside_line"] = [int(color[0]), int(color[1]), int(color[2])]
                 print("Recorded outside line color!")
-                color_calibration[1] = False
+                calibrating_center = True
 
     cv2.setMouseCallback('calibrate', calibrate_color_with_mouse)
 

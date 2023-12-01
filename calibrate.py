@@ -70,7 +70,7 @@ def create_tolerance_trackbar_window(name: str, color_calibration: dict):
 
     def create_hsv_tolerance_trackbars(line_title: str):
         def update_val(val, title, dim):
-            color_calibration[title][dim] = val
+            color_calibration[title]["tolerance"][dim] = val
 
         cv2.createTrackbar(
             f'{line_title} H tolerance',

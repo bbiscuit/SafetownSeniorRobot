@@ -130,11 +130,17 @@ def main():
             color = frame[y, x]
 
             if calibrating_center:
-                color_settings["center_line"]["hsv"] = [int(color[0]), int(color[1]), int(color[2])]
+                color_settings["center_line"]["hsv"] = [
+                    int(color[0]),
+                    int(color[1]),
+                    int(color[2])]
                 print("Recorded center line color!")
                 calibrating_center = False
             else:
-                color_settings["outside_line"]["hsv"] = [int(color[0]), int(color[1]), int(color[2])]
+                color_settings["outside_line"]["hsv"] = [
+                    int(color[0]),
+                    int(color[1]),
+                    int(color[2])]
                 print("Recorded outside line color!")
                 calibrating_center = True
 

@@ -91,18 +91,20 @@ def get_lane_marker_mask(
 
     # Apply Thresholding for the outside tape.
     outside_color = color_calibration["outside_line"]["hsv"]
+    outside_tolerance = color_calibration["outside_line"]["tolerance"]
     lower_outside, higher_outside = to_thruple(
-        apply_tolerance(outside_color[0], 360, 360),
-        apply_tolerance(outside_color[1], 10, 255),
-        apply_tolerance(outside_color[2], 10, 255))
+        apply_tolerance(outside_color[0], outside_tolerance[0], 360),
+        apply_tolerance(outside_color[1], outside_tolerance[1], 255),
+        apply_tolerance(outside_color[2], outside_tolerance[2], 255))
     mask_outside = cv2.inRange(right_side_hsv, lower_outside, higher_outside)
 
     # Apply Thresholding for the inside tape.
     center_color = color_calibration["center_line"]["hsv"]
+    center_tolerance = color_calibration["center_line"]["tolerance"]
     lower_center, higher_center = to_thruple(
-        apply_tolerance(center_color[0], 10, 360),
-        apply_tolerance(center_color[1], 10, 255),
-        apply_tolerance(center_color[2], 10, 255))
+        apply_tolerance(center_color[0], center_tolerance[0], 360),
+        apply_tolerance(center_color[1], center_tolerance[1], 255),
+        apply_tolerance(center_color[2], center_tolerance[2], 255))
     mask_inside = cv2.inRange(left_side_hsv, lower_center, higher_center)
 
     return (mask_outside, mask_inside)

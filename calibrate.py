@@ -160,13 +160,14 @@ def main():
 
         # Get masks for inside and outside line.
         color_calibration = settings["color_calibration"]
-        mask_outside, mask_inside = detect.get_lane_marker_mask(warped, color_calibration)
+        mask_outside, mask_center = detect.get_lane_marker_mask(warped, color_calibration)
 
         # Update the frames being shown.
         draw_warping_trackers(frame, coords)
         cv2.imshow('calibrate', frame)
         cv2.imshow('warped', warped)
-        cv2.imshow('masks', mask_outside | mask_inside)
+        cv2.imshow('outside line mask', mask_outside)
+        cv2.imshow('center line mask', mask_center)
         i += 1
 
     # Write back the settings to file.

@@ -153,12 +153,8 @@ def main():
             break
 
         # Get masks for inside and outside line.
-        center_line_hsv = settings["color_calibration_hsv"]["center_line"]
-        outside_line_hsv = settings["color_calibration_hsv"]["outside_line"]
-        mask_outside, mask_inside = detect.get_lane_marker_mask(
-            warped,
-            center_line_hsv,
-            outside_line_hsv)
+        color_calibration = settings["color_calibration"]
+        mask_outside, mask_inside = detect.get_lane_marker_mask(warped, color_calibration)
 
         # Update the frames being shown.
         draw_warping_trackers(frame, coords)

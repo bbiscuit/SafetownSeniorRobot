@@ -56,11 +56,29 @@ class Camera:
 
 def get_lane_marker_mask(
     frame: 'cv2.MatLike',
-    inside_color=YELLOW_TAPE_HSV,
-    outside_color=WHITE_TAPE_HSV):
+    color_calibration: dict):
     """Gets two binary masks: one for the outside solid line, and one for the inside dotted
-    line. Returns a tuple which looks like (outside_mask, inside_mask)."""
+    line. Returns a tuple which looks like (outside_mask, inside_mask). Assumes that the frame
+    passed in is BGR."""
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # Split the frame into halves, so that we're only checking half of the frame for the inside/
+    # outside lines. This reduces noise (we know a priori that the left side of the image contains
+    # no useful informatino about the outside line).
+    right_side_hsv = cv2.rectangle(
+        hsv.copy(),
+        (0, 0),
+        (frame.shape[1] // 2, frame.shape[0]),
+        (0, 0, 0),
+        -1
+    )
+    left_side_hsv = cv2.rectangle(
+        hsv.copy(),
+        (frame.shape[1] // 2, 0),
+        (frame.shape[1], frame.shape[0]),
+        (0, 0, 0),
+        -1
+    )
 
     def apply_tolerance(val, tolerance, max_val):
         return (
@@ -72,22 +90,26 @@ def get_lane_marker_mask(
         return ((x[0], y[0], z[0]), (x[1], y[1], z[1]))
 
     # Apply Thresholding for the outside tape.
+    outside_color = color_calibration["outside_line"]["hsv"]
+    outside_tolerance = color_calibration["outside_line"]["tolerance"]
     lower_outside, higher_outside = to_thruple(
-        apply_tolerance(outside_color[0], 360, 360),
-        apply_tolerance(outside_color[1], 10, 255),
-        apply_tolerance(outside_color[2], 10, 255))
-    mask_outside = cv2.inRange(hsv, lower_outside, higher_outside)
+        apply_tolerance(outside_color[0], outside_tolerance[0], 360),
+        apply_tolerance(outside_color[1], outside_tolerance[1], 255),
+        apply_tolerance(outside_color[2], outside_tolerance[2], 255))
+    mask_outside = cv2.inRange(right_side_hsv, lower_outside, higher_outside)
 
     # Apply Thresholding for the inside tape.
-    lower_inside, higher_inside = to_thruple(
-        apply_tolerance(inside_color[0], 10, 360),
-        apply_tolerance(inside_color[1], 10, 255),
-        apply_tolerance(inside_color[2], 10, 255))
-    mask_inside = cv2.inRange(hsv, lower_inside, higher_inside)
+    center_color = color_calibration["center_line"]["hsv"]
+    center_tolerance = color_calibration["center_line"]["tolerance"]
+    lower_center, higher_center = to_thruple(
+        apply_tolerance(center_color[0], center_tolerance[0], 360),
+        apply_tolerance(center_color[1], center_tolerance[1], 255),
+        apply_tolerance(center_color[2], center_tolerance[2], 255))
+    mask_inside = cv2.inRange(left_side_hsv, lower_center, higher_center)
 
     return (mask_outside, mask_inside)
 
-def find_center_points(outside_contours, inside_contours, dot_num):
+def find_center_points(outside_contours, inside_contours, dot_num, frame):
     """Finds the center point between each dot in the middle line and the right line."""
     points = []
 
@@ -100,6 +122,7 @@ def find_center_points(outside_contours, inside_contours, dot_num):
     # later, a function which does not exist with numpy arrays.
     outside_contours = list(outside_contours)
     outside_line = max(outside_contours, key=cv2.contourArea).tolist()
+    cv2.drawContours(frame, np.array(np.asarray(outside_line, dtype=np.int32)), 0, (255, 0, 0), 3)
 
     # For each of the inside contours, interpolate a centerline between the top largest and the
     # outside line.
@@ -164,7 +187,7 @@ def _run_test():
 
     # Initialize the camera.
     cam = Camera(settings)
-    color_calibration = settings["color_calibration_hsv"]
+    color_calibration = settings["color_calibration"]
 
     # Loop until the user presses the enter key.
     while cv2.waitKey(1) != ENTER_KEY:
@@ -173,10 +196,7 @@ def _run_test():
         frame_warped = cam.warp_frame(frame)
 
         # Get masks for the outside solid and inside dotted line.
-        outside_mask, inside_mask = get_lane_marker_mask(
-            frame_warped,
-            color_calibration["center_line"],
-            color_calibration["outside_line"])
+        outside_mask, inside_mask = get_lane_marker_mask(frame_warped, color_calibration)
 
         # Get contours from these masks.
         outside_contours, _ = cv2.findContours(
@@ -188,12 +208,12 @@ def _run_test():
             cv2.CHAIN_APPROX_SIMPLE)
 
         # Draw the center points on the warped frame.
-        centers = find_center_points(outside_contours, inside_contours, 5)
+        centers = find_center_points(outside_contours, inside_contours, 5, frame_warped)
         draw_points(frame_warped, centers)
 
         # Show the test data to the user.
         cv2.imshow('input', frame_warped)
-        cv2.imshow('output', outside_mask | inside_mask)
+        cv2.imshow('mask', inside_mask | outside_mask)
 
 if __name__ == '__main__':
     _run_test()

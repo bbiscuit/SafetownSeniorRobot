@@ -56,8 +56,7 @@ class Camera:
 
 def get_lane_marker_mask(
     frame: 'cv2.MatLike',
-    inside_color=YELLOW_TAPE_HSV,
-    outside_color=WHITE_TAPE_HSV):
+    color_calibration: dict):
     """Gets two binary masks: one for the outside solid line, and one for the inside dotted
     line. Returns a tuple which looks like (outside_mask, inside_mask). Assumes that the frame
     passed in is BGR."""
@@ -91,6 +90,7 @@ def get_lane_marker_mask(
         return ((x[0], y[0], z[0]), (x[1], y[1], z[1]))
 
     # Apply Thresholding for the outside tape.
+    outside_color = color_calibration["outside_line"]["hsv"]
     lower_outside, higher_outside = to_thruple(
         apply_tolerance(outside_color[0], 360, 360),
         apply_tolerance(outside_color[1], 10, 255),
@@ -98,11 +98,12 @@ def get_lane_marker_mask(
     mask_outside = cv2.inRange(right_side_hsv, lower_outside, higher_outside)
 
     # Apply Thresholding for the inside tape.
-    lower_inside, higher_inside = to_thruple(
-        apply_tolerance(inside_color[0], 10, 360),
-        apply_tolerance(inside_color[1], 10, 255),
-        apply_tolerance(inside_color[2], 10, 255))
-    mask_inside = cv2.inRange(left_side_hsv, lower_inside, higher_inside)
+    center_color = color_calibration["center_line"]["hsv"]
+    lower_center, higher_center = to_thruple(
+        apply_tolerance(center_color[0], 10, 360),
+        apply_tolerance(center_color[1], 10, 255),
+        apply_tolerance(center_color[2], 10, 255))
+    mask_inside = cv2.inRange(left_side_hsv, lower_center, higher_center)
 
     return (mask_outside, mask_inside)
 
@@ -184,7 +185,7 @@ def _run_test():
 
     # Initialize the camera.
     cam = Camera(settings)
-    color_calibration = settings["color_calibration_hsv"]
+    color_calibration = settings["color_calibration"]
 
     # Loop until the user presses the enter key.
     while cv2.waitKey(1) != ENTER_KEY:
@@ -193,10 +194,7 @@ def _run_test():
         frame_warped = cam.warp_frame(frame)
 
         # Get masks for the outside solid and inside dotted line.
-        outside_mask, inside_mask = get_lane_marker_mask(
-            frame_warped,
-            color_calibration["center_line"],
-            color_calibration["outside_line"])
+        outside_mask, inside_mask = get_lane_marker_mask(frame_warped, color_calibration)
 
         # Get contours from these masks.
         outside_contours, _ = cv2.findContours(
